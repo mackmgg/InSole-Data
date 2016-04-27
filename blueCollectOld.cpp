@@ -8,14 +8,8 @@
 #include <unistd.h>
 #include <iomanip>
 #include <vector>
-#include <cmath>
+#include <math.h>
 #include <time.h>
-
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <netdb.h>
-// #include <algorithm>
 
 using namespace std;
 
@@ -53,32 +47,9 @@ int main()
     int timeStamp;
     char rawPressures[47];
     int lineCount = 1;
-
-    // Sockety Stuff
-    int sockfd, n;
-    int portno = 6000;
-    struct sockaddr_in serv_addr;
-    struct hostent *server;
-
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    server = gethostbyname("128.205.44.16");
-    //server = gethostbyname("127.0.0.1");
-
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-
-    bcopy((char *)server->h_addr, (char*) &serv_addr.sin_addr.s_addr, server->h_length);
-    serv_addr.sin_port = htons(portno);
-
-    n = connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr));
-    if(n < 0) {
-      cout << "Cannot connect to server." << endl;
-      exit(0);
-    }
-
     //Initial Connect to bind transfer
     system("hcitool lecc B4:99:4C:67:B7:B4");
-    sleep(3);
+    sleep(3); 
     //Writing for gatt protocol to have registers transmit data
     //Change --value= 11 for Pressure, 12 for IMU, 13 for Pressure + IMU
     if(!(in1 = popen("gatttool -b B4:99:4C:67:B7:B4 --char-write-req --handle 0x0025 --value=13 --listen", "r")))
@@ -89,40 +60,31 @@ int main()
     lasttime=time(NULL);
     int downsample;
     downsample=0;
-    float altYaw;
+    int altYaw;
     altYaw=0;
-
-    int pressurePointArr[48];
-    // cout<<"here"<<endl;
-    int j =0;
-    int p=0;
     while(fgets(buff, sizeof(buff), in1)!=NULL)
     {
-        //Deleting Unnecessary components of
+        //Deleting Unnecessary components of 
         string str(buff);
         str.erase (0,36);
         //Uncomment the following lines if you just want pure characters to be printed out.
         //You can access each character by tmp[i], i being the index of the character array.
-        strcpy(tmp, str.c_str());
+        strcpy(tmp, str.c_str()); 
         //cout << tmp;
-
+        
         index = 3;
-
+    
 
         if(tmp[1] == '0' || tmp[1] == '1')
         {
            cout<<"Pressure Points: ";
            while(index < 60)
            {
-            // pressurePointArr[j]=num;
             memcpy(pressurePoint, &tmp[index], 2);
             pressurePoint[2] = '\0';
             index = index + 3;
-            p=(255 - (((unsigned int)strtol(pressurePoint, NULL, 16))));
-            pressurePointArr[j]=p;
-            j++;
-            cout<<j<<" ";
-           }
+            cout<<(255 - (((unsigned int)strtol(pressurePoint, NULL, 16))))<<" ";
+           }   
         }
 
         else if(tmp[1] == '2')
@@ -133,19 +95,12 @@ int main()
                 memcpy(pressurePoint, &tmp[index], 2);
                 pressurePoint[2] = '\0';
                 index = index + 3;
-                p=(255 - (((unsigned int)strtol(pressurePoint, NULL, 16))));
-                pressurePointArr[j]=p;
-                j++;
-                // cout<<p<<" ";
-            }
-            // cout<<"J here: "<<j;
-            j=0;
+                cout<<(255 - (((unsigned int)strtol(pressurePoint, NULL, 16))))<<" ";
+            }   
         }
-
 
         else if(tmp[1] == '3')
         {
-            // cout<<"J: "<<j<<endl;
             memcpy(accelX_msb, &tmp[3], 2);
             accelX_msb[2] = '\0';
             memcpy(accelX_lsb, &tmp[6], 2);
@@ -204,7 +159,7 @@ int main()
                 accZ = (-1 * (65536 - accZ))/16056.0f;
             else
                 accZ = accZ/6056.0f;
-
+            
 
             gyrX = (((int)strtol(gyrX_msb,NULL,16)) << 8 | ((int)strtol(gyrX_lsb,NULL,16))) ;
             gyrY = (((int)strtol(gyrY_msb,NULL,16)) << 8 | ((int)strtol(gyrY_lsb,NULL,16))) ;
@@ -234,7 +189,7 @@ int main()
             if(magZ > 32767)
                 magZ = -1 * (65536 - magZ);
 
-            unknownx = (unsigned int)strtol(unknown,NULL,16) << 8;
+            unknownx = (unsigned int)strtol(unknown,NULL,16) << 8; 
 
             //Bob code begins here
             int pitchAcc;
@@ -243,20 +198,20 @@ int main()
             int pitchGyro;
             int timer;
             int dt;
-
+            
 
             timer=time(NULL);
             dt=timer-lasttime;
             pitchGyro=pitchAcc+gyrX*(dt);
             lasttime=timer;
 
-            float pitchComplement;
+            int pitchComplement;
             pitchComplement=0.9*pitchGyro+0.1*pitchAcc;
 
-            float rollAcc;
+            int rollAcc;
             rollAcc=atan(-accX/accZ)*180/3.14;
 
-            float yaw;
+            int yaw;
             //yaw = atan (accZ/sqrt(accX*accX + accZ*accZ))*180/3.14;
             int mag_norm;
             mag_norm=sqrt(magX*magX+magY*magY+magZ*magZ);
@@ -270,10 +225,10 @@ int main()
                 altYaw+=gyrZ*3;
                 // cout<<"NEGATIVE"<<endl;
             }
-            else if(abs(gyrZ)>0.25){
-                altYaw+=(gyrZ*6.4);
+            else if(abs(gyrZ)>0.35){
+                altYaw+=gyrZ*5.75;
             }
-
+            
             if(downsample==0){
                 // cout<<"downsample is false"<<endl;
                 // yaw = 180 * atan (accZ/sqrt(accX*accX + accZ*accZ))/3.14159;
@@ -283,79 +238,23 @@ int main()
             else{
                 downsample--;
             }
-            //tuning pitch to work correctly
-            cout<<"actual pitch: "<<pitchComplement<<endl;
-            // pitchComplement=-0.021614*(pitchComplement)*pitchComplement+2.83964*pitchComplement+4.82555;
-            float op1=0;
-            if(pitchComplement<4){
-                op1=pitchComplement/0.4+33.3;
-            }
-            else if(28.9796*log(pitchComplement)<33){
-                op1=33.3;
-            }
-            else{
-                op1=28.9796*log(pitchComplement);
-            }
-            pitchComplement=op1-33.2165;
-            // if(pitchComplement<20 && pitchComplement>1){
+            
 
-            //     pitchComplement/=0.3;
-            // }
-            // else if(pitchComplement>=20 && pitchComplement<25){
-            //     pitchComplement/=0.33;
-            // }
-            // else if(pitchComplement<70){
-            //     pitchComplement/=0.34;
-            // }
+            // cout<<"AccX: "<<accX<<" AccY: "<<accY<<" AccZ: "<<accZ<<endl;
+            cout<<"raw yaw: "<<gyrZ<<" "<<endl;
+            cout<<"Pitch: "<<pitchComplement<<" Roll: "<<rollAcc<< " Yaw: "<<int(altYaw)<<endl;
+            // cout<<"Uknown: "<<unknownx<<endl;
+            // cout<<"GyrX: "<<gyrX<<" GyrY: "<<gyrY<<" GyrZ: "<<gyrZ<<endl;
+            // cout<<"MagX: "<<magX/1000<<" MagY: "<<magY/1000<<" MagZ: "<<magZ/1000<<endl;
 
-
-            //now to analyze the pressure sensors to determine color
-            int color;
-            color=0;
-
-            //determine the number of sensors over 75 and over 125
-            int count75=0;
-            int count125=0;
-
-            for(int i=0;i<48;i++){
-                if(pressurePointArr[i]>75){
-                    count75++;
-                }
-                if(pressurePointArr[i]>125){
-                    count125++;
-                }
-            }
-
-            if(count125>5){
-                color=2;//red
-            }
-            else if(count75>5){
-                color=1;//orange
-            }
-            else{
-                color=0;//green
-            }
-            cout<<endl;
-            cout<<"Protocol: "<<rollAcc<<" "<<pitchComplement<<" "<<int(altYaw)<<" "<<color<<endl;
-            char message [200];
-            sprintf(message, "%f %f %f", rollAcc, pitchComplement, altYaw);
-            write(sockfd, message, strlen(message));
-
-            // cout<<"Pitch: "<<pitchComplement<<" Roll: "<<rollAcc<< " Yaw: "<<int(altYaw)<<endl;
-
-        // cout<<"Uknown: "<<unknownx<<endl;
-        // cout<<"GyrX: "<<gyrX<<" GyrY: "<<gyrY<<" GyrZ: "<<gyrZ<<endl;
-        // cout<<"MagX: "<<magX/1000<<" MagY: "<<magY/1000<<" MagZ: "<<magZ/1000<<endl;
-
-        //sources: http://engineering.stackexchange.com/questions/3348/calculating-pitch-yaw-and-roll-from-mag-acc-and-gyro-data
-        //sources: https://theccontinuum.com/2012/09/24/arduino-imu-pitch-roll-from-accelerometer/
-        //source: https://sites.google.com/site/myimuestimationexperience/sensors/magnetometer
-        //Bob code ends here
+            //sources: http://engineering.stackexchange.com/questions/3348/calculating-pitch-yaw-and-roll-from-mag-acc-and-gyro-data
+            //sources: https://theccontinuum.com/2012/09/24/arduino-imu-pitch-roll-from-accelerometer/
+            //source: https://sites.google.com/site/myimuestimationexperience/sensors/magnetometer
+            //Bob code ends here 
         }
         cout<<endl;
     index = 0;
     }
-    close(sockfd);
-    // pclose(in1);
+    pclose(in1);
     return 0;
 }
