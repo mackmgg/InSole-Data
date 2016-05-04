@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <iomanip>
 #include <vector>
-#include <math.h>
+#include <cmath>
 #include <time.h>
 
 #include <sys/socket.h>
@@ -22,12 +22,12 @@ int main()
 {
 	FILE *in1;
     FILE *in2;
-	int i = 0;
+		// int i = 0;
     int index_Right = 3;
     int index_Left = 3;
-    int pressIndex = 0;
-    int pressureCount = 0;
-    int pressures[47];
+    // int pressIndex = 0;
+    // int pressureCount = 0;
+    // int pressures[47];
     char buff_Right[1024];
     char buff_Left[1024];
     char tmp_Right[1024];
@@ -72,31 +72,53 @@ int main()
     char magZ_lsb_Left[3];
     float accX_Right = 0.0, accY_Right = 0.0, accZ_Right = 0.0, gyrX_Right = 0.0, gyrY_Right = 0.0, gyrZ_Right = 0.0, magX_Right = 0.0, magY_Right = 0.0, magZ_Right = 0.0;
     float accX_Left = 0.0, accY_Left = 0.0, accZ_Left = 0.0, gyrX_Left = 0.0, gyrY_Left = 0.0, gyrZ_Left = 0.0, magX_Left = 0.0, magY_Left = 0.0, magZ_Left = 0.0;
-    int timeStamp;
-    
+    // int timeStamp;
+
 	//Initial Connect to bind transfer
 	//Right Sole
     system("hcitool lecc B4:99:4C:67:B7:B4");
-	sleep(2);
+		sleep(2);
     //Left Sole
     system("hcitool lecc B4:99:4C:6C:15:51");
-    sleep(2); 
-	
+    sleep(2);
+
     //Writing for gatt protocol to have registers transmit data
 	//Change --value= 11 for Pressure, 12 for IMU, 13 for Pressure + IMU
-	
+
+		// Sockety Stuff
+		int sockfd, n;
+		int portno = 6000;
+		struct sockaddr_in serv_addr;
+		struct hostent *server;
+
+		sockfd = socket(AF_INET, SOCK_STREAM, 0);
+		server = gethostbyname("128.205.44.16");
+		//server = gethostbyname("127.0.0.1");
+
+		bzero((char *) &serv_addr, sizeof(serv_addr));
+		serv_addr.sin_family = AF_INET;
+
+		bcopy((char *)server->h_addr, (char*) &serv_addr.sin_addr.s_addr, server->h_length);
+		serv_addr.sin_port = htons(portno);
+
+		n = connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr));
+		if(n < 0) {
+		  cout << "Cannot connect to server." << endl;
+		  exit(0);
+		}
+
     //Right Sole
     if(!(in1 = popen("gatttool -b B4:99:4C:67:B7:B4 --char-write-req --handle 0x0025 --value=13 --listen", "r")))
     {
         return -1;
     }
-    
+
     //Left Sole
     if(!(in2 = popen("gatttool -b B4:99:4C:6C:15:51 --char-write-req --handle 0x0025 --value=13 --listen", "r")))
     {
         return -1;
     }
-    
+
     int lasttimeR;
     lasttimeR=time(NULL);
     int lasttimeL;
@@ -105,8 +127,8 @@ int main()
     downsampleR=0;
     int downsampleL;
     downsampleL=0;
-    int altYawRight=0;
-    int altYawLeft=0;
+    double altYawRight=0;
+    double altYawLeft=0;
 
     int pressurePointArrRight[48];
     int pressurePointArrLeft[48];
@@ -118,7 +140,7 @@ int main()
     while(fgets(buff_Right, sizeof(buff_Right), in1)!=NULL && fgets(buff_Left, sizeof(buff_Left), in2)!=NULL)
     {
 
-        //Deleting Unnecessary components of 
+        //Deleting Unnecessary components of
         string str_Right(buff_Right);
         str_Right.erase (0,36);
 
@@ -129,7 +151,7 @@ int main()
         strcpy(tmp_Right, str_Right.c_str());
         strcpy(tmp_Left, str_Left.c_str());
         //cout<<tmp_Right<<" "<<tmp_Left;
-        
+
         index_Right = 3;
         index_Left = 3;
 
@@ -154,7 +176,7 @@ int main()
             jLeft++;
             // cout<<"Left: "<<<<" ";
 
-           }   
+           }
         }
 
         else if(tmp_Right[1] == '2' && tmp_Left[1] == '2')
@@ -175,16 +197,16 @@ int main()
                 pressurePointArrLeft[jLeft]=p;
                 jRight++;
                 jLeft++;
-            } 
+            }
             jRight=0;
-            jLeft=0;  
+            jLeft=0;
         }
-        
+
 
 
         else if(tmp_Right[1] == '3' && tmp_Left[1] == '3')
         {
-            
+
             //Right Sole IMU Configurations
 
             memcpy(accelX_msb_Right, &tmp_Right[3], 2);
@@ -285,7 +307,7 @@ int main()
                 accZ_Right = (-1 * (65536 - accZ_Right))/16056.0f;
             else
                 accZ_Right = accZ_Right/6056.0f;
-            
+
 
             gyrX_Right = (((int)strtol(gyrX_msb_Right,NULL,16)) << 8 | ((int)strtol(gyrX_lsb_Right,NULL,16))) ;
             gyrY_Right = (((int)strtol(gyrY_msb_Right,NULL,16)) << 8 | ((int)strtol(gyrY_lsb_Right,NULL,16))) ;
@@ -315,7 +337,7 @@ int main()
             if(magZ_Right > 32767)
                 magZ_Right = -1 * (65536 - magZ_Right);
 
-            // Second Left Sole 
+            // Second Left Sole
 
             accX_Left = ((((int)strtol(accelX_msb_Left,NULL,16)) << 8 | ((int)strtol(accelX_lsb_Left,NULL,16))) ) ;
             accY_Left = ((((int)strtol(accelY_msb_Left,NULL,16)) << 8 | ((int)strtol(accelY_lsb_Left,NULL,16))) ) ;
@@ -333,7 +355,7 @@ int main()
                 accZ_Left = (-1 * (65536 - accZ_Left))/16056.0f;
             else
                 accZ_Left = accZ_Left/6056.0f;
-            
+
 
             gyrX_Left = (((int)strtol(gyrX_msb_Left,NULL,16)) << 8 | ((int)strtol(gyrX_lsb_Left,NULL,16))) ;
             gyrY_Left = (((int)strtol(gyrY_msb_Left,NULL,16)) << 8 | ((int)strtol(gyrY_lsb_Left,NULL,16))) ;
@@ -364,28 +386,28 @@ int main()
                 magZ_Left = -1 * (65536 - magZ_Left);
 
             //Bob code begins here
-            int pitchAccR;
+            double pitchAccR;
             pitchAccR=atan(accY_Right/(sqrt(accX_Right*accX_Right+accZ_Right*accZ_Right)))*180/3.14;
 
-            int pitchGyroR;
+            double pitchGyroR;
             int timerR;
             int dtR;
-            
+
 
             timerR=time(NULL);
             dtR=timerR-lasttimeR;
             pitchGyroR=pitchAccR+gyrX_Right*(dtR);
             lasttimeR=timerR;
 
-            int pitchComplementR;
+            double pitchComplementR;
             pitchComplementR=0.9*pitchGyroR+0.1*pitchAccR;
 
-            int rollAccR;
+            double rollAccR;
             rollAccR=atan(-accX_Right/accZ_Right)*180/3.14;
 
-            int yawR;
+            double yawR;
             //yaw = atan (accZ/sqrt(accX*accX + accZ*accZ))*180/3.14;
-            int mag_normR;
+            double mag_normR;
             mag_normR=sqrt(magX_Right*magX_Right+magY_Right*magY_Right+magZ_Right*magZ_Right);
             magX_Right=magX_Right/mag_normR;
             magY_Right=magY_Right/mag_normR;
@@ -393,14 +415,14 @@ int main()
 
             // yaw=atan2(-magY*cos(rollAcc)+magZ*sin(rollAcc),magX*cos(pitchComplement)+magY*sin(pitchComplement)*sin(rollAcc)+
             //     magZ*sin(pitchComplement)*cos(rollAcc))*180/3.14;
-            if(abs(gyrZ_Right)>1.75 ){
+            if(std::abs(gyrZ_Right)>1.75 ){
                 altYawRight+=gyrZ_Right*3;
                 // cout<<"NEGATIVE"<<endl;
             }
-            else if(abs(gyrZ_Right)>0.25){
+            else if(std::abs(gyrZ_Right)>0.25){
                 altYawRight+=(gyrZ_Right*6.4);
             }
-            
+
             if(downsampleR==0){
                 // cout<<"downsample is false"<<endl;
                 // yaw = 180 * atan (accZ/sqrt(accX*accX + accZ*accZ))/3.14159;
@@ -412,8 +434,8 @@ int main()
             }
             //tuning pitch to work correctly
             // cout<<"actual pitch: "<<pitchComplement<<endl;
-            // pitchComplement=-0.021614*(pitchComplement)*pitchComplement+2.83964*pitchComplement+4.82555; 
-            int op1R=0;
+            // pitchComplement=-0.021614*(pitchComplement)*pitchComplement+2.83964*pitchComplement+4.82555;
+            double op1R=0;
             if(pitchComplementR<4){
                 op1R=pitchComplementR/0.4+33.3;
             }
@@ -425,7 +447,7 @@ int main()
             }
             pitchComplementR=op1R-33.2165;
             // if(pitchComplement<20 && pitchComplement>1){
-                
+
             //     pitchComplement/=0.3;
             // }
             // else if(pitchComplement>=20 && pitchComplement<25){
@@ -434,7 +456,7 @@ int main()
             // else if(pitchComplement<70){
             //     pitchComplement/=0.34;
             // }
-            
+
 
             //now to analyze the pressure sensors to determine color
             int colorR;
@@ -465,7 +487,7 @@ int main()
                 colorR=0;//green
             }
             // cout<<endl;
-            cout<<"Protocol: "<<rollAccR<<" "<<pitchComplementR<<" "<<int(altYawRight)<<" "<<colorR<<endl;
+            // cout<<"Protocol: "<<rollAccR<<" "<<pitchComplementR<<" "<<int(altYawRight)<<" "<<colorR<<endl;
 
 
 
@@ -475,42 +497,42 @@ int main()
 
 
             //  now to do the left sole
-            int pitchAccL;
+            double pitchAccL;
             pitchAccL=atan(accY_Left/(sqrt(accX_Left*accX_Left+accZ_Left*accZ_Left)))*180/3.14;
 
-            int pitchGyroL;
+            double pitchGyroL;
             int timerL;
             int dtL;
-            
+
 
             timerL=time(NULL);
             dtL=timerL-lasttimeL;
             pitchGyroL=pitchAccL+gyrX_Left*(dtL);
             lasttimeL=timerL;
 
-            int pitchComplementL;
+            double pitchComplementL;
             pitchComplementL=0.9*pitchGyroL+0.1*pitchAccL;
 
-            int rollAccL;
+            double rollAccL;
             rollAccL=atan(-accX_Left/accZ_Left)*180/3.14;
 
-            int yawL;
+            double yawL;
             //yaw = atan (accZ/sqrt(accX*accX + accZ*accZ))*180/3.14;
-            int mag_normL;
+            float mag_normL;
             mag_normL=sqrt(magX_Left*magX_Left+magY_Left*magY_Left+magZ_Left*magZ_Left);
             magX_Left=magX_Left/mag_normL;
             magY_Left=magY_Left/mag_normL;
             magZ_Left=magZ_Left/mag_normL;
             // yaw=atan2(-magY*cos(rollAcc)+magZ*sin(rollAcc),magX*cos(pitchComplement)+magY*sin(pitchComplement)*sin(rollAcc)+
             //     magZ*sin(pitchComplement)*cos(rollAcc))*180/3.14;
-            if(abs(gyrZ_Left)>1.75 ){
+            if(std::abs(gyrZ_Left)>1.75 ){
                 altYawLeft+=gyrZ_Left*3;
                 // cout<<"NEGATIVE"<<endl;
             }
-            else if(abs(gyrZ_Left)>0.25){
+            else if(std::abs(gyrZ_Left)>0.25){
                 altYawLeft=(gyrZ_Left*6.4);
             }
-            
+
             if(downsampleL==0){
                 // cout<<"downsample is false"<<endl;
                 // yaw = 180 * atan (accZ/sqrt(accX*accX + accZ*accZ))/3.14159;
@@ -522,8 +544,8 @@ int main()
             }
             //tuning pitch to work correctly
             // cout<<"actual pitch: "<<pitchComplement<<endl;
-            // pitchComplement=-0.021614*(pitchComplement)*pitchComplement+2.83964*pitchComplement+4.82555; 
-            int op1L=0;
+            // pitchComplement=-0.021614*(pitchComplement)*pitchComplement+2.83964*pitchComplement+4.82555;
+            double op1L=0;
             if(pitchComplementL<4){
                 op1L=pitchComplementL/0.4+33.3;
             }
@@ -534,8 +556,8 @@ int main()
                 op1L=28.9796*log(pitchComplementL);
             }
             pitchComplementL=op1L-33.2165;
-            
-            
+
+
 
             //now to analyze the pressure sensors to determine color
             int colorL;
@@ -566,12 +588,16 @@ int main()
                 colorL=0;//green
             }
             // cout<<endl;
-            cout<<"Protocol: "<<rollAccL<<" "<<pitchComplementL<<" "<<int(altYawLeft)<<" "<<colorL<<endl;
-            cout<<endl;
-
+            // cout<<"Protocol: "<<rollAccL<<" "<<pitchComplementL<<" "<<int(altYawLeft)<<" "<<colorL<<endl;
+            // cout<<endl;
+						char message [500];
+            sprintf(message, "%f %f %f %f %f %f %f %f %f %f %f %f", rollAccL,
+					 		pitchComplementL, altYawLeft, rollAccR, pitchComplementR, altYawRight,
+							accX_Left, accY_Left, accZ_Left, accX_Right, accY_Right, accZ_Right);
+            write(sockfd, message, strlen(message));
 
             //Bobs code ends here
-             
+
         }
 		// cout<<endl;
     index_Right = 0;
@@ -579,5 +605,6 @@ int main()
     }
     pclose(in1);
     pclose(in2);
+		close(sockfd);
 	return 0;
 }
